@@ -1,0 +1,60 @@
+# FRACTURE — Game Context untuk Cursor AI
+
+## Tentang Game
+Nama: FRACTURE
+Genre: Top-down roguelite tactical action (Hotline Miami + Hades)
+Engine: Three.js (vanilla JS, tidak pakai framework)
+Platform: Web browser, no download, no login
+Target: Menang Cursor Vibe Jam 2026 (deadline 1 Mei 2026)
+
+## Core Mechanic
+- One-hit kill: semua entitas (player dan musuh) mati dalam 1 hit
+- Top-down camera dengan mouse aim
+- Roguelite: tiap run beda, pilih Fragment ability tiap 3-4 room
+- Room-by-room progression, boss tiap 5 room
+
+## Struktur File
+- main.js: init Three.js, game loop utama, state management
+- src/player.js: movement, dash, shooting
+- src/enemies.js: Watcher AI dan Charger AI
+- src/room.js: room logic, door, clear condition
+- src/roomGenerator.js: preset room pool
+- src/fragments.js: 8 ability fragment system
+- src/boss.js: boss 3 fase
+- src/juice.js: screen shake, particles, hit flash
+- src/audio.js: Howler.js wrapper
+- src/ui.js: HUD, fragment picker, death screen
+- src/collision.js: semua collision detection
+
+## 2 Tipe Enemy
+- Watcher: patrol + vision cone 90° + chase player
+- Charger: idle → windup 0.6s → charge lurus kecepatan 18 → cooldown
+
+## 8 Fragment Ability
+GHOST_STEP, BLOOD_ECHO, SLOW_FIELD, PHASE_SHIFT,
+VOID_PULL, CHAIN, VOID_SIGHT, FRACTURE_BURST
+
+## Tech Stack
+- Three.js: rendering 3D
+- Howler.js: audio
+- Vite: dev server dan build
+- Vercel: hosting
+
+## Aturan Penting
+- WAJIB: <script async src="https://vibej.am/2026/widget.js"></script> ada di index.html
+- Tidak boleh ada loading screen panjang
+- Restart game dengan tombol R tanpa reload halaman
+- 90% kode harus AI-generated (Vibe Jam rules)
+
+## Visual Direction
+- Warna dominan: hitam (#080810), ungu gelap (#3d1f78), merah (#ef4444)
+- Low-poly 3D, lighting dramatis dengan PointLight berwarna
+- Estetika: brutalist + liminal + surreal
+
+## Game State
+type GamePhase = 'start' | 'playing' | 'fragment' | 'dead' | 'boss' | 'win'
+
+## Prinsip Development
+- Satu sistem selesai dan bisa dimainkan sebelum mulai sistem berikutnya
+- Polish (juice) lebih penting dari banyak fitur
+- Scope ketat: selesaikan MUST HAVE sebelum NICE TO HAVE
