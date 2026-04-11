@@ -1,60 +1,109 @@
-import './style.css'
-import javascriptLogo from './assets/javascript.svg'
-import viteLogo from './assets/vite.svg'
-import heroImg from './assets/hero.png'
-import { setupCounter } from './counter.js'
+import * as THREE from 'three'
+import { Player } from './player.js'
 
-document.querySelector('#app').innerHTML = `
-<section id="center">
-  <div class="hero">
-    <img src="${heroImg}" class="base" width="170" height="179">
-    <img src="${javascriptLogo}" class="framework" alt="JavaScript logo"/>
-    <img src=${viteLogo} class="vite" alt="Vite logo" />
-  </div>
-  <div>
-    <h1>Get started</h1>
-    <p>Edit <code>src/main.js</code> and save to test <code>HMR</code></p>
-  </div>
-  <button id="counter" type="button" class="counter"></button>
-</section>
+// ── SCENE ─────────────────────────────────────────
+const scene = new THREE.Scene()
+scene.background = new THREE.Color('#080810')
+scene.fog = new THREE.FogExp2(0x080810, 0.04)
 
-<div class="ticks"></div>
+// ── CAMERA (top-down) ─────────────────────────────
+const camera = new THREE.PerspectiveCamera(
+  60,
+  window.innerWidth / window.innerHeight,
+  0.1,
+  200
+)
+camera.position.set(0, 18, 12)
+camera.lookAt(0, 0, 0)
 
-<section id="next-steps">
-  <div id="docs">
-    <svg class="icon" role="presentation" aria-hidden="true"><use href="/icons.svg#documentation-icon"></use></svg>
-    <h2>Documentation</h2>
-    <p>Your questions, answered</p>
-    <ul>
-      <li>
-        <a href="https://vite.dev/" target="_blank">
-          <img class="logo" src=${viteLogo} alt="" />
-          Explore Vite
-        </a>
-      </li>
-      <li>
-        <a href="https://developer.mozilla.org/en-US/docs/Web/JavaScript" target="_blank">
-          <img class="button-icon" src="${javascriptLogo}" alt="">
-          Learn more
-        </a>
-      </li>
-    </ul>
-  </div>
-  <div id="social">
-    <svg class="icon" role="presentation" aria-hidden="true"><use href="/icons.svg#social-icon"></use></svg>
-    <h2>Connect with us</h2>
-    <p>Join the Vite community</p>
-    <ul>
-      <li><a href="https://github.com/vitejs/vite" target="_blank"><svg class="button-icon" role="presentation" aria-hidden="true"><use href="/icons.svg#github-icon"></use></svg>GitHub</a></li>
-      <li><a href="https://chat.vite.dev/" target="_blank"><svg class="button-icon" role="presentation" aria-hidden="true"><use href="/icons.svg#discord-icon"></use></svg>Discord</a></li>
-      <li><a href="https://x.com/vite_js" target="_blank"><svg class="button-icon" role="presentation" aria-hidden="true"><use href="/icons.svg#x-icon"></use></svg>X.com</a></li>
-      <li><a href="https://bsky.app/profile/vite.dev" target="_blank"><svg class="button-icon" role="presentation" aria-hidden="true"><use href="/icons.svg#bluesky-icon"></use></svg>Bluesky</a></li>
-    </ul>
-  </div>
-</section>
+// ── RENDERER ─────────────────────────────────────
+const renderer = new THREE.WebGLRenderer({ antialias: true })
+renderer.setSize(window.innerWidth, window.innerHeight)
+renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2))
+renderer.shadowMap.enabled = true
+renderer.shadowMap.type = THREE.PCFSoftShadowMap
+document.body.appendChild(renderer.domElement)
 
-<div class="ticks"></div>
-<section id="spacer"></section>
-`
+// ── LIGHTS ───────────────────────────────────────
+const ambient = new THREE.AmbientLight(0x111122, 0.5)
+scene.add(ambient)
 
-setupCounter(document.querySelector('#counter'))
+const dirLight = new THREE.DirectionalLight(0xffffff, 1.2)
+dirLight.position.set(5, 20, 5)
+dirLight.castShadow = true
+dirLight.shadow.mapSize.set(1024, 1024)
+scene.add(dirLight)
+
+const accentLight = new THREE.PointLight(0x3d1f78, 2.5, 28)
+accentLight.position.set(-4, 4, 2)
+scene.add(accentLight)
+
+// ── GAME STATE ───────────────────────────────────
+const state = {
+  phase: 'start',
+  roomCount: 0,
+  fragments: [],
+  keys: {}
+}
+
+// ── INPUT ────────────────────────────────────────
+function onKeyDown(e) {
+  state.keys[e.code] = true
+}
+function onKeyUp(e) {
+  state.keys[e.code] = false
+}
+window.addEventListener('keydown', onKeyDown)
+window.addEventListener('keyup', onKeyUp)
+
+// ── MOUSE → GROUND RAYCAST ───────────────────────
+const mouseNdc = new THREE.Vector2()
+const raycaster = new THREE.Raycaster()
+const groundPlane = new THREE.Plane(new THREE.Vector3(0, 1, 0), 0)
+const mouseWorld = new THREE.Vector3()
+
+function updateMouseWorld() {
+  raycaster.setFromCamera(mouseNdc, camera)
+  raycaster.ray.intersectPlane(groundPlane, mouseWorld)
+}
+
+window.addEventListener('mousemove', e => {
+  mouseNdc.x = (e.clientX / window.innerWidth) * 2 - 1
+  mouseNdc.y = -(e.clientY / window.innerHeight) * 2 + 1
+  updateMouseWorld()
+})
+
+// ── PLAYER ───────────────────────────────────────
+const player = new Player(scene)
+
+window.addEventListener('mousedown', e => {
+  if (e.button === 0) player.shoot(mouseWorld)
+})
+
+// ── LOOP ─────────────────────────────────────────
+const clock = new THREE.Clock()
+const camOffset = new THREE.Vector3(0, 18, 12)
+const camDesired = new THREE.Vector3()
+
+function tick() {
+  requestAnimationFrame(tick)
+  const dt = clock.getDelta()
+
+  updateMouseWorld()
+  player.update(dt, state.keys, mouseWorld)
+
+  camDesired.copy(player.mesh.position).add(camOffset)
+  camera.position.lerp(camDesired, 0.08)
+  camera.lookAt(player.mesh.position.x, player.mesh.position.y, player.mesh.position.z)
+
+  renderer.render(scene, camera)
+}
+
+tick()
+
+// ── RESIZE ───────────────────────────────────────
+window.addEventListener('resize', () => {
+  camera.aspect = window.innerWidth / window.innerHeight
+  camera.updateProjectionMatrix()
+  renderer.setSize(window.innerWidth, window.innerHeight)
+})
