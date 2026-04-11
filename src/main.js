@@ -38,6 +38,28 @@ const accentLight = new THREE.PointLight(0x3d1f78, 2.5, 28)
 accentLight.position.set(-4, 4, 2)
 scene.add(accentLight)
 
+// ── FLOOR GRID (world-fixed; scrolls in view saat player/kamera bergerak) ──
+const gridSize = 120
+const gridDivisions = 60
+const grid = new THREE.GridHelper(
+  gridSize,
+  gridDivisions,
+  0x3d1f78,
+  0x1a1430
+)
+grid.position.y = 0.002
+const gridMat = grid.material
+if (Array.isArray(gridMat)) {
+  for (const m of gridMat) {
+    m.transparent = true
+    m.opacity = 0.45
+  }
+} else {
+  gridMat.transparent = true
+  gridMat.opacity = 0.45
+}
+scene.add(grid)
+
 // ── GAME STATE ───────────────────────────────────
 const state = {
   phase: 'start',
