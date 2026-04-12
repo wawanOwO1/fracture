@@ -7,6 +7,27 @@ const HIT_RADIUS = 0.9
 /** Satu sel grid `main.js` (gridSize / gridDivisions). */
 const TILE = 2
 
+/** Spawn awal: jarak horizontal dari pusat player, dalam tile (~8–14 × TILE world). */
+const SPAWN_MIN_TILES_FROM_PLAYER = 8
+const SPAWN_MAX_TILES_FROM_PLAYER = 14
+
+/**
+ * Posisi xz acak di cincin sekitar player (untuk spawn awal, jauh dari pusat).
+ * @param {number} playerX
+ * @param {number} playerZ
+ * @returns {{ x: number, z: number }}
+ */
+export function pickInitialSpawnXZ(playerX, playerZ) {
+  const minR = SPAWN_MIN_TILES_FROM_PLAYER * TILE
+  const maxR = SPAWN_MAX_TILES_FROM_PLAYER * TILE
+  const dist = minR + Math.random() * (maxR - minR)
+  const a = Math.random() * Math.PI * 2
+  return {
+    x: playerX + Math.sin(a) * dist,
+    z: playerZ + Math.cos(a) * dist
+  }
+}
+
 const MOVE_CHASE = 4.75
 const MOVE_ROAM = 2.65
 const ROAM_SEGMENT_MIN = 1.4
