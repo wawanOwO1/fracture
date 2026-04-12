@@ -1,5 +1,6 @@
 import * as THREE from 'three'
 import { Player } from './player.js'
+import { Enemy } from './enemy.js'
 
 // ── SCENE ─────────────────────────────────────────
 const scene = new THREE.Scene()
@@ -98,6 +99,51 @@ window.addEventListener('mousemove', e => {
 // ── PLAYER ───────────────────────────────────────
 const player = new Player(scene)
 
+/** Musuh: kubus merah + health bar. */
+const enemies = []
+
+function spawnEnemy(x, z) {
+  enemies.push(new Enemy(scene, x, z))
+}
+
+spawnEnemy(7, 2)
+spawnEnemy(-6, 4)
+spawnEnemy(1, -8)
+spawnEnemy(-3, -5)
+
+const PROJ_RADIUS = 0.1
+
+function resolveProjectileEnemyHits() {
+  const hitR = PROJ_RADIUS + Enemy.HIT_RADIUS
+  const hitR2 = hitR * hitR
+
+  for (let i = player.projectiles.length - 1; i >= 0; i--) {
+    const p = player.projectiles[i]
+    const px = p.mesh.position.x
+    const py = p.mesh.position.y
+    const pz = p.mesh.position.z
+
+    for (let j = enemies.length - 1; j >= 0; j--) {
+      const e = enemies[j]
+      if (!e.alive) continue
+      const c = e.getHitCenter()
+      const dx = px - c.x
+      const dy = py - c.y
+      const dz = pz - c.z
+      if (dx * dx + dy * dy + dz * dz > hitR2) continue
+
+      e.takeDamage(Enemy.DAMAGE_PER_HIT)
+      player.removeProjectileAt(i)
+
+      if (!e.alive) {
+        e.dispose()
+        enemies.splice(j, 1)
+      }
+      break
+    }
+  }
+}
+
 window.addEventListener('mousedown', e => {
   if (e.button === 0) player.shoot(mouseWorld)
 })
@@ -113,10 +159,15 @@ function tick() {
 
   updateMouseWorld()
   player.update(dt, state.keys, mouseWorld)
+  resolveProjectileEnemyHits()
 
   camDesired.copy(player.mesh.position).add(camOffset)
   camera.position.lerp(camDesired, 0.08)
   camera.lookAt(player.mesh.position.x, player.mesh.position.y, player.mesh.position.z)
+
+  for (const e of enemies) {
+    if (e.alive) e.faceHealthBarToCamera(camera)
+  }
 
   renderer.render(scene, camera)
 }

@@ -142,6 +142,16 @@ export class Player {
     })
   }
 
+  /** Hapus peluru indeks `i` (dispose mesh). */
+  removeProjectileAt(i) {
+    const p = this.projectiles[i]
+    if (!p) return
+    this.scene.remove(p.mesh)
+    p.mesh.geometry.dispose()
+    p.mesh.material.dispose()
+    this.projectiles.splice(i, 1)
+  }
+
   die() {
     if (!this.alive) return
     this.alive = false
