@@ -7,6 +7,10 @@ const DASH_COOLDOWN = 1.5
 const PROJ_SPEED = 20
 const PROJ_MAX_DIST = 15
 
+const PLAYER_MAX_HP = 100
+
+const _qInv = new THREE.Quaternion()
+
 export class Player {
   constructor(scene) {
     this.scene = scene
@@ -15,6 +19,9 @@ export class Player {
     this.projectiles = []
     this.onDeath = null
 
+    this.maxHp = PLAYER_MAX_HP
+    this.hp = PLAYER_MAX_HP
+
     const geo = new THREE.BoxGeometry(0.6, 1.2, 0.6)
     const mat = new THREE.MeshStandardMaterial({ color: 0xe8e8f0 })
     this.mesh = new THREE.Mesh(geo, mat)
@@ -22,11 +29,69 @@ export class Player {
     this.mesh.receiveShadow = true
     scene.add(this.mesh)
 
+    const barW = 0.65
+    const barH = 0.09
+    this.hpBarGroup = new THREE.Group()
+    this.hpBarGroup.position.y = 0.82
+
+    const bgMat = new THREE.MeshBasicMaterial({
+      color: 0x1a1a22,
+      depthTest: true,
+      transparent: true,
+      opacity: 0.95
+    })
+    this.hpBarBg = new THREE.Mesh(new THREE.PlaneGeometry(barW, barH), bgMat)
+    this.hpBarBg.position.z = -0.001
+
+    const fgMat = new THREE.MeshBasicMaterial({
+      color: 0x44aaff,
+      depthTest: true
+    })
+    this.hpBarFill = new THREE.Mesh(new THREE.PlaneGeometry(barW, barH), fgMat)
+    this.hpBarFill.position.z = 0.001
+
+    this.hpBarGroup.add(this.hpBarBg, this.hpBarFill)
+    this.mesh.add(this.hpBarGroup)
+    this._hpBarHalfW = barW / 2
+    this._refreshHealthBar()
+
     this._dashTimer = 0
     this._cooldownTimer = 0
     this._dashDir = new THREE.Vector3()
     this._move = new THREE.Vector3()
     this._prevDashKeys = { space: false, shiftL: false, shiftR: false }
+  }
+
+  /**
+   * @param {number} amount
+   */
+  takeDamage(amount) {
+    if (!this.alive) return
+    this.hp -= amount
+    if (this.hp <= 0) {
+      this.hp = 0
+      this.die()
+      return
+    }
+    this._refreshHealthBar()
+  }
+
+  _refreshHealthBar() {
+    const t = Math.max(0, this.hp / this.maxHp)
+    this.hpBarFill.scale.x = Math.max(0.02, t)
+    const c = t > 0.45 ? 0x44aaff : t > 0.2 ? 0xffaa22 : 0xef4444
+    this.hpBarFill.material.color.setHex(c)
+    this.hpBarFill.position.x = -(1 - t) * this._hpBarHalfW
+  }
+
+  /**
+   * Health bar mengikuti rotasi aim; koreksi agar billboard ke kamera.
+   * @param {THREE.Camera} camera
+   */
+  faceHealthBarToCamera(camera) {
+    if (!this.alive) return
+    _qInv.copy(this.mesh.quaternion).invert()
+    this.hpBarGroup.quaternion.copy(_qInv).multiply(camera.quaternion)
   }
 
   update(dt, keys, mouseWorld) {
@@ -156,6 +221,10 @@ export class Player {
     if (!this.alive) return
     this.alive = false
     this.isDashing = false
+    this.hp = 0
+    this._refreshHealthBar()
     if (typeof this.onDeath === 'function') this.onDeath()
   }
 }
+
+Player.MAX_HP = PLAYER_MAX_HP

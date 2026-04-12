@@ -106,6 +106,22 @@ function spawnEnemy(x, z) {
   enemies.push(new Enemy(scene, x, z))
 }
 
+/** Spawn musuh acak di arena, menjauh dari player. */
+function spawnEnemyRandom(minDistFromPlayer = 10) {
+  const range = 32
+  for (let k = 0; k < 24; k++) {
+    const x = (Math.random() * 2 - 1) * range
+    const z = (Math.random() * 2 - 1) * range
+    const dx = x - player.mesh.position.x
+    const dz = z - player.mesh.position.z
+    if (dx * dx + dz * dz >= minDistFromPlayer * minDistFromPlayer) {
+      spawnEnemy(x, z)
+      return
+    }
+  }
+  spawnEnemy((Math.random() - 0.5) * 24, (Math.random() - 0.5) * 24)
+}
+
 spawnEnemy(7, 2)
 spawnEnemy(-6, 4)
 spawnEnemy(1, -8)
@@ -132,12 +148,13 @@ function resolveProjectileEnemyHits() {
       const dz = pz - c.z
       if (dx * dx + dy * dy + dz * dz > hitR2) continue
 
-      e.takeDamage(Enemy.DAMAGE_PER_HIT)
+      e.takeDamage(Enemy.DAMAGE_FROM_BULLET)
       player.removeProjectileAt(i)
 
       if (!e.alive) {
         e.dispose()
         enemies.splice(j, 1)
+        spawnEnemyRandom()
       }
       break
     }
@@ -159,12 +176,18 @@ function tick() {
 
   updateMouseWorld()
   player.update(dt, state.keys, mouseWorld)
+
+  for (const e of enemies) {
+    if (e.alive) e.update(dt, player)
+  }
+
   resolveProjectileEnemyHits()
 
   camDesired.copy(player.mesh.position).add(camOffset)
   camera.position.lerp(camDesired, 0.08)
   camera.lookAt(player.mesh.position.x, player.mesh.position.y, player.mesh.position.z)
 
+  player.faceHealthBarToCamera(camera)
   for (const e of enemies) {
     if (e.alive) e.faceHealthBarToCamera(camera)
   }
