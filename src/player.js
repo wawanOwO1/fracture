@@ -4,8 +4,12 @@ const MOVE_SPEED = 8
 const DASH_SPEED = 20
 const DASH_DURATION = 0.15
 const DASH_COOLDOWN = 1.5
-const PROJ_SPEED = 20
-const PROJ_MAX_DIST = 15
+const PROJ_SPEED = 50
+const PROJ_SIZE = 1
+const PROJ_MAX_DIST = 20
+
+/** Kelancaran putar body ke arah mouse (semakin kecil semakin halus). */
+const AIM_YAW_SMOOTH = 5.5
 
 const PLAYER_MAX_HP = 100
 
@@ -126,7 +130,7 @@ export class Player {
         this.isDashing = false
         this._cooldownTimer = DASH_COOLDOWN
       }
-      this._syncRotation(mouseWorld)
+      this._syncRotation(dt, mouseWorld)
       return
     }
 
@@ -143,7 +147,7 @@ export class Player {
         this.isDashing = true
         this._dashTimer = DASH_DURATION
         this.mesh.position.addScaledVector(this._dashDir, DASH_SPEED * dt)
-        this._syncRotation(mouseWorld)
+        this._syncRotation(dt, mouseWorld)
         return
       }
     }
@@ -158,7 +162,7 @@ export class Player {
       this.mesh.position.add(this._move)
     }
 
-    this._syncRotation(mouseWorld)
+    this._syncRotation(dt, mouseWorld)
   }
 
   _fillDashDirection(keys, mouseWorld) {
@@ -176,11 +180,16 @@ export class Player {
     this._dashDir.set(mouseWorld.x - px, 0, mouseWorld.z - pz)
   }
 
-  _syncRotation(mouseWorld) {
+  _syncRotation(dt, mouseWorld) {
     const dx = mouseWorld.x - this.mesh.position.x
     const dz = mouseWorld.z - this.mesh.position.z
     if (dx * dx + dz * dz < 1e-8) return
-    this.mesh.rotation.y = Math.atan2(dx, dz)
+    const targetY = Math.atan2(dx, dz)
+    let dy = targetY - this.mesh.rotation.y
+    while (dy > Math.PI) dy -= Math.PI * 2
+    while (dy < -Math.PI) dy += Math.PI * 2
+    const t = 1 - Math.exp(-AIM_YAW_SMOOTH * dt)
+    this.mesh.rotation.y += dy * t
   }
 
   shoot(mouseWorld) {
